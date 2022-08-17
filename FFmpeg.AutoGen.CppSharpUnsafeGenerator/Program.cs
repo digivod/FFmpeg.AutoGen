@@ -115,6 +115,7 @@ internal class Program
         yield return p.Parse("libavcodec/avcodec.h");
         yield return p.Parse("libavcodec/dxva2.h");
         yield return p.Parse("libavcodec/d3d11va.h");
+        yield return p.Parse("libavcodec/bsf.h");
 
         // libavformat
         yield return p.Parse("libavformat/avformat.h");
