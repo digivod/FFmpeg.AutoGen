@@ -185,7 +185,9 @@ internal class Program
             OutputDir = Path.Combine(baseContext.SolutionDir, @"FFmpeg.AutoGen.Bindings.DynamicallyLinked\generated")
         };
 
-        FunctionsGenerator.GenerateDynamicallyLinked("DynamicallyLinkedBindings.g.cs", context);
+        FunctionsGenerator.GenerateDynamicallyLinked("DynamicallyLinkedBindings.Windows.g.cs", context with { TypeName = "DynamicallyLinkedWindowsBindings" } ,(libraryName,version)=>$"{libraryName}-{version}.dll");
+        FunctionsGenerator.GenerateDynamicallyLinked("DynamicallyLinkedBindings.Mac.g.cs", context with { TypeName = "DynamicallyLinkedMacBindings" } ,(libraryName,version)=>$"lib{libraryName}.{version}.dylib");
+        FunctionsGenerator.GenerateDynamicallyLinked("DynamicallyLinkedBindings.Linux.g.cs", context with { TypeName = "DynamicallyLinkedLinuxBindings" } ,(libraryName,version)=>$"lib{libraryName}.so.{version}");
     }
 
     private static void GenerateDynamicallyLoadedBindings(GenerationContext baseContext)

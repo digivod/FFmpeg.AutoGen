@@ -63,12 +63,21 @@ internal abstract class GeneratorBase : IDisposable
         {
             WriteLine($"public static unsafe partial class {Context.TypeName}");
 
-            using (BeginBlock()) GenerateBody();
+            using (BeginBlock())
+            {
+                GenerateConstants();
+                GenerateBody();
+            }
         }
         else
             GenerateBody();
     }
 
+    protected virtual void GenerateConstants()
+    {
+        
+    }
+    
     protected abstract void GenerateBody();
 
     protected internal void Write(string value) => _indentedTextWriter.Write(value);

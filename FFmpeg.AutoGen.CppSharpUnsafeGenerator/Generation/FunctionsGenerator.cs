@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using FFmpeg.AutoGen.CppSharpUnsafeGenerator.Definitions;
 
@@ -38,10 +39,11 @@ internal sealed class FunctionsGenerator : GeneratorBase<ExportFunctionDefinitio
         g.Generate();
     }
 
-    public static void GenerateDynamicallyLinked(string path, GenerationContext context)
+    public static void GenerateDynamicallyLinked(string path, GenerationContext context, Func<string,int,string> libraryFilenameFactory)
     {
         using var g = new FunctionsGenerator(path, context);
         g.IsDynamicallyLinkedGenerationOn = true;
+        g.LibraryFilenameFactory = libraryFilenameFactory;
         g.Generate();
     }
 
@@ -50,6 +52,27 @@ internal sealed class FunctionsGenerator : GeneratorBase<ExportFunctionDefinitio
         using var g = new FunctionsGenerator(path, context);
         g.IsDynamicallyLoadedGenerationOn = true;
         g.Generate();
+    }
+
+    public Func<string,int,string> LibraryFilenameFactory { get; set; }
+
+    protected override void GenerateConstants()
+    {
+        if (IsDynamicallyLinkedGenerationOn)
+        {
+            HashSet<string> libs = new HashSet<string>();
+
+            foreach (var function in Context.Definitions.OfType<ExportFunctionDefinition>())
+            {
+                if (!libs.Contains(function.LibraryName))
+                {
+                    libs.Add(function.LibraryName);
+                    WriteLine($"const string {function.LibraryName} = \"{LibraryFilenameFactory(function.LibraryName,function.LibraryVersion)}\";");
+                }
+            }
+
+            WriteLine();
+        }
     }
 
     public override IEnumerable<string> Usings()
@@ -83,7 +106,11 @@ internal sealed class FunctionsGenerator : GeneratorBase<ExportFunctionDefinitio
                     functions.ToList().ForEach(GenerateDynamicallyLoaded);
                 }
                 else
+                {
+                    WriteLine("#pragma  warning disable 612,618");
                     functions.ToList().ForEach(f => WriteLine($"vectors.{f.Name} = {f.Name};"));
+                    WriteLine("#pragma  warning restore 612,618");
+                }
         }
     }
 
@@ -91,8 +118,8 @@ internal sealed class FunctionsGenerator : GeneratorBase<ExportFunctionDefinitio
     {
         if (IsFacadeGenerationOn) GenerateFacadeFunction(function);
         if (IsVectorsGenerationOn) GenerateVector(function);
-        if (IsStaticallyLinkedGenerationOn) GenerateDllImport(function, "__Internal");
-        if (IsDynamicallyLinkedGenerationOn) GenerateDllImport(function, $"{function.LibraryName}-{function.LibraryVersion}");
+        if (IsStaticallyLinkedGenerationOn) GenerateDllImport(function, "\"__Internal\"");
+        if (IsDynamicallyLinkedGenerationOn) GenerateDllImport(function, $"{function.LibraryName}");
     }
 
     public void GenerateFacadeFunction(ExportFunctionDefinition function)
@@ -125,7 +152,7 @@ internal sealed class FunctionsGenerator : GeneratorBase<ExportFunctionDefinitio
         this.WriteObsoletion(function);
         if (Context.SuppressUnmanagedCodeSecurity) WriteLine(SuppressUnmanagedCodeSecurityAttribute);
 
-        WriteLine($"[DllImport(\"{libraryName}\", CallingConvention = CallingConvention.Cdecl)]");
+        WriteLine($"[DllImport({libraryName}, CallingConvention = CallingConvention.Cdecl)]");
         function.ReturnType.Attributes.ToList().ForEach(WriteLine);
 
         var parameters = ParametersHelper.GetParameters(function.Parameters, Context.IsLegacyGenerationOn);
